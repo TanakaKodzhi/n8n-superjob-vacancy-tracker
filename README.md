@@ -20,7 +20,7 @@
 
 ### Пошаговый запуск
 
-**[Скачайте готовый JSON-шаблон](vacancies_monitoring_template.json)**
+**👉[Скачайте готовый JSON-шаблон](vacancies_monitoring_template.json)**
 
 1. **Импорт сценария:**
    - Откройте интерфейс n8n.
