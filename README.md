@@ -2,7 +2,7 @@
 
 Сценарий автоматизации n8n для ежедневного мониторинга вакансий по стеку разработки через официальный REST API SuperJob с фильтрацией свежих публикаций, отсевом дубликатов между запусками и отправкой форматированного дайджеста в Telegram.
 
-<video src="Vacancies_smart_monitoring.mp4" autoplay loop muted playsinline width="100%"></video>
+![Демонстрация работы](Vacancies_smart_monitoring.gif)
 
 ## Ключевые возможности
 
