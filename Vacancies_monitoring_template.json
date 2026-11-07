@@ -1,0 +1,277 @@
+{
+  "name": "Умный парсер вакансий с защитой от дублей",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "### 🚀 Инструкция по быстрому старту:\n1. **SuperJob API**: В ноде `HTTP Request` замените заголовок `X-Api-App-Id` на ваш токен (получить в личном кабинете разработчика api.superjob.ru). При необходимости настройте параметры города `town` и поисковые ключи `keywords[0][keys]`.\n2. **Telegram Bot**: В ноде `Send a text message` выберите свои учетные данные Telegram Bot (`Bot Token`) и укажите ваш `chatId` (ID канала, чата или группы, куда бот добавлен администратором с правом публикации).\n3. **Расписание**: В ноде `Schedule Trigger` укажите удобное время запуска (по умолчанию 19:00 ежедневно).\n\n💡 *Сценарий автоматически фильтрует дубликаты, экранирует спецсимволы в Telegram HTML и защищен от пустого ввода.*",
+        "height": 280,
+        "width": 500
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -40
+      ],
+      "id": "097433a5-b346-458d-915f-f457659c59ec",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 19
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -176,
+        -16
+      ],
+      "id": "1eaa4a00-d0d3-418e-ad16-cd6098c51302",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://api.superjob.ru/2.0/vacancies/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "keywords[0][keys]",
+              "value": "Python, Java, C++, Программист, Разработчик"
+            },
+            {
+              "name": "town",
+              "value": "4"
+            },
+            {
+              "name": "keywords[0][srws]",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-App-Id",
+              "value": "YOUR_SUPERJOB_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        48,
+        -16
+      ],
+      "id": "830cc9bf-de44-4262-bbbd-ebcf725f508f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "objects",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        -16
+      ],
+      "id": "9c02b76b-d0f4-4a3c-a51d-6412701c4af4",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "be68d536-2406-4774-aa24-5cba0fdb59ba",
+              "leftValue": "={{ $json.date_published }}",
+              "rightValue": "={{ Math.floor(($now.toMillis()- 86400000) / 1000) }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.4,
+      "position": [
+        448,
+        -16
+      ],
+      "id": "35997f65-c611-4f42-b859-e1c995c8bc4b",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{\n  (() => {\n    const escapeHtml = (str) => String(str || '')\n      .replace(/&/g, '&amp;')\n      .replace(/</g, '&lt;')\n      .replace(/>/g, '&gt;');\n\n    if (!$json.profession || !Array.isArray($json.profession) || $json.profession.length === 0) {\n      return \"<b>Свежих вакансий за последние 24 часа не найдено.</b>\";\n    }\n\n    let message = \"<b>🔥 Свежие вакансии по тегам:</b>\\n<i>Python, Java, C++, Программист, Разработчик</i>\\n\\n\";\n    const limit = Math.min($json.profession.length, 7);\n\n    for (let i = 0; i < limit; i++) {\n      let title = escapeHtml($json.profession[i]);\n      let url = escapeHtml($json.link[i]);\n      let from = $json.payment_from ? $json.payment_from[i] : 0;\n      let to = $json.payment_to ? $json.payment_to[i] : 0;\n      let salary = \"по договорённости\";\n\n      if (from > 0 && to > 0) {\n        salary = `${from} – ${to} ₽`;\n      } else if (from > 0) {\n        salary = `от ${from} ₽`;\n      } else if (to > 0) {\n        salary = `до ${to} ₽`;\n      }\n\n      message += `🔹 <a href=\"${url}\">${title}</a>\\n💰 З/п: ${salary}\\n\\n`;\n    }\n\n    return message.trim();\n  })()\n}}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        208
+      ],
+      "id": "fa0f7b17-1a59-4dfe-a5f0-a079ffdfbf12",
+      "name": "Send a text message"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "profession"
+            },
+            {
+              "fieldToAggregate": "candidat"
+            },
+            {
+              "fieldToAggregate": "link"
+            },
+            {
+              "fieldToAggregate": "payment_from"
+            },
+            {
+              "fieldToAggregate": "payment_to"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        448,
+        208
+      ],
+      "id": "9bca3534-4165-4243-9f42-1fb2d70d7bbf",
+      "name": "Aggregate",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        288,
+        208
+      ],
+      "id": "4182ca85-ae3f-4bf2-bdf9-8c3d6d737558",
+      "name": "Remove Duplicates"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Moscow",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "",
+  "tags": []
+}
